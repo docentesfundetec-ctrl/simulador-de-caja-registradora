@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simulador de Caja Registradora 410DX</title>
+  
+  <!-- Carga de React, ReactDOM y Babel desde CDN -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  
+  <!-- Carga de Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Estilos base para scrollbars -->
+  <style>
+    body { margin: 0; overflow: hidden; }
+    .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 10px; }
+    .scrollbar-hide::-webkit-scrollbar { display: none; }
+    .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    // --- ICONOS DE LUCIDE-REACT (Convertidos a componentes funcionales SVG) ---
+    const Icon = ({ path, size = 24, className = '', strokeWidth = 2 }) => (
+      <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" className={className} dangerouslySetInnerHTML={{ __html: path }} />
+    );
+
+    const iconPaths = {
+      AlertCircle: '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>',
+      CheckCircle: '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+      ChevronRight: '<polyline points="9 18 15 12 9 6"/>',
+      Package: '<line x1="16.5" y1="9.4" x2="7.5" y2="4.21"/><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/>',
+      Pill: '<path d="m10.5 20.5 10-10a4.95 4.95 0 1 0-7-7l-10 10a4.95 4.95 0 1 0 7 7Z"/><path d="m8.5 8.5 7 7"/>',
+      Syringe: '<path d="m18 2 4 4"/><path d="m17 7 3-3"/><path d="M19 9 8.7 19.3c-1 1-2.5 1-3.4 0l-.6-.6c-1-1-1-2.5 0-3.4L15 5"/><path d="m9 11 4 4"/><path d="m5 19-3 3"/><path d="m14 4 6 6"/>',
+      Wallet: '<path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>',
+      ArrowUp: '<line x1="12" y1="19" x2="12" y2="5"/><polyline points="5 12 12 5 19 12"/>',
+      User: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+      Truck: '<rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>',
+      UserCog: '<circle cx="18" cy="15" r="3"/><circle cx="9" cy="7" r="4"/><path d="M10 15H6a4 4 0 0 0-4 4v2"/><path d="m21.7 16.4-.9-.3"/><path d="m15.2 13.9-.9-.3"/><path d="m16.6 18.7.3-.9"/><path d="m19.1 12.2.3-.9"/><path d="m19.6 18.7-.4-1"/><path d="m16.8 12.3-.4-1"/><path d="m14.3 16.6 1-.4"/><path d="m20.7 13.8 1-.4"/>',
+      RefreshCw: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',
+      Stamp: '<path d="M5 22h14"/><path d="M19.27 13.73A2.5 2.5 0 0 0 17.5 13h-11A2.5 2.5 0 0 0 4 15.5V17a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-1.5c0-.66-.26-1.3-.73-1.77Z"/><path d="M14 13V8.5C14 7 15 7 15 5a3 3 0 0 0-3-3c-1.66 0-3 1-3 3s1 2 1 3.5V13"/>',
+      BookOpen: '<path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>',
+      GraduationCap: '<path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>',
+      Home: '<path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+      PlaySquare: '<rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><polygon points="10 8 16 12 10 16 10 8"/>',
+      HelpCircle: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>',
+      ShoppingBag: '<path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4Z"/><path d="M3 6h18"/><path d="M16 10a4 4 0 0 1-8 0"/>',
+      DollarSign: '<line x1="12" y1="2" x2="12" y2="22"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
+      Info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>'
+    };
+
+    const AlertCircle = (p) => <Icon path={iconPaths.AlertCircle} {...p} />;
+    const CheckCircle = (p) => <Icon path={iconPaths.CheckCircle} {...p} />;
+    const ChevronRight = (p) => <Icon path={iconPaths.ChevronRight} {...p} />;
+    const Package = (p) => <Icon path={iconPaths.Package} {...p} />;
+    const Pill = (p) => <Icon path={iconPaths.Pill} {...p} />;
+    const Syringe = (p) => <Icon path={iconPaths.Syringe} {...p} />;
+    const Wallet = (p) => <Icon path={iconPaths.Wallet} {...p} />;
+    const ArrowUp = (p) => <Icon path={iconPaths.ArrowUp} {...p} />;
+    const User = (p) => <Icon path={iconPaths.User} {...p} />;
+    const Truck = (p) => <Icon path={iconPaths.Truck} {...p} />;
+    const UserCog = (p) => <Icon path={iconPaths.UserCog} {...p} />;
+    const RefreshCw = (p) => <Icon path={iconPaths.RefreshCw} {...p} />;
+    const Stamp = (p) => <Icon path={iconPaths.Stamp} {...p} />;
+    const BookOpen = (p) => <Icon path={iconPaths.BookOpen} {...p} />;
+    const GraduationCap = (p) => <Icon path={iconPaths.GraduationCap} {...p} />;
+    const Home = (p) => <Icon path={iconPaths.Home} {...p} />;
+    const PlaySquare = (p) => <Icon path={iconPaths.PlaySquare} {...p} />;
+    const HelpCircle = (p) => <Icon path={iconPaths.HelpCircle} {...p} />;
+    const ShoppingBag = (p) => <Icon path={iconPaths.ShoppingBag} {...p} />;
+    const DollarSign = (p) => <Icon path={iconPaths.DollarSign} {...p} />;
+    const Info = (p) => <Icon path={iconPaths.Info} {...p} />;
+
+    const formatCurrency = (value) => {
+      return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', minimumFractionDigits: 0 }).format(value);
+    };
+
+    // --- COMPONENTE PRINCIPAL APP ---
+    function App() {
+      // --- STATE MANAGEMENT ---
+      const [gameMode, setGameMode] = useState('menu'); // 'menu', 'guided', 'free', 'sandbox'
+      
+      const [display, setDisplay] = useState('0');
+      const [total, setTotal] = useState(0);
+      const [receipt, setReceipt] = useState([]);
+      const [multiplier, setMultiplier] = useState(1);
+      const [lastEntry, setLastEntry] = useState(null);
+      const [drawerOpen, setDrawerOpen] = useState(false);
+      const [errorState, setErrorState] = useState(false);
+      const [statusIndicator, setStatusIndicator] = useState(''); 
+      
+      // Register Specific State
+      const [registerMode, setRegisterMode] = useState('reg1'); // 'off', 'reg1', 'reg2', 'x', 'z', 'prog'
+      const [drawerCash, setDrawerCash] = useState(0); // Para los reportes X y Z
+      
+      // Game State
+      const [currentLevel, setCurrentLevel] = useState(0);
+      const [lastCompletedTx, setLastCompletedTx] = useState(null); 
+      const [evaluation, setEvaluation] = useState({ status: 'none', message: '', isFinal: false }); 
+      
+      // Manual State
+      const [faqOpen, setFaqOpen] = useState(false);
+
+      const receiptEndRef = useRef(null);
+
+      useEffect(() => {
+        receiptEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, [receipt]);
+
+      // --- ACTIONS & SOUNDS ---
+      const triggerError = () => {
+        setErrorState(true);
+        setStatusIndicator('ERROR');
+      };
+
+      // --- KEYBOARD LOGIC ---
+      const isSalesMode = registerMode === 'reg1' || registerMode === 'reg2';
+
+      const handleNumber = (num) => {
+        if (registerMode === 'off') return;
+        if (!isSalesMode || errorState || evaluation.status !== 'none') return;
+        if (drawerOpen) setDrawerOpen(false); 
+        setStatusIndicator('');
+        
+        setDisplay(prev => {
+          if (prev === '0') return num;
+          if (prev.length > 7) return prev; 
+          return prev + num;
+        });
+      };
+
+      const handleClear = () => {
+        if (registerMode === 'off') return;
+        if (evaluation.status !== 'none') return;
+        setDisplay('0');
+        setErrorState(false);
+        setStatusIndicator('');
+        setMultiplier(1);
+      };
+
+      const handleDept = (deptNum, deptName) => {
+        if (registerMode === 'off') return;
+        if (!isSalesMode || errorState || evaluation.status !== 'none') return;
+        const amount = parseInt(display) || 0;
+        
+        if (amount === 0) {
+          triggerError(); 
+          return;
+        }
+
+        const itemTotal = amount * multiplier;
+        setTotal(prev => prev + itemTotal);
+        
+        const newLines = [];
+        if (multiplier > 1) {
+          newLines.push({ text: `${multiplier} X @ ${formatCurrency(amount)}`, type: 'info' });
+        }
+        newLines.push({ label: `DEP${deptNum} ${deptName.substring(0,6)}`, value: formatCurrency(itemTotal), type: 'item' });
+        
+        setReceipt(prev => [...prev, ...newLines]);
+        setLastEntry({ amount: itemTotal, dept: deptNum, linesAdded: newLines.length });
+        
+        setDisplay('0');
+        setMultiplier(1);
+        setStatusIndicator('');
+      };
+
+      const handleSubtotalNS = () => {
+        if (registerMode === 'off') return;
+        if (!isSalesMode || errorState || evaluation.status !== 'none') return;
+        
+        if (total === 0 && display === '0') {
+            setDrawerOpen(true);
+            setReceipt(prev => [...prev, { text: 'NO VENTA', type: 'info' }]);
+            setStatusIndicator('CAJON ABIERTO');
+            return;
+        }
+
+        setDisplay(total.toString());
+        setStatusIndicator('SUBTOTAL');
+      };
+
+      const handleCash = () => {
+        if (registerMode === 'off') return;
+        if (errorState || evaluation.status !== 'none') return;
+
+        // Lógica para Reportes X y Z
+        if (registerMode === 'x' || registerMode === 'z') {
+           setReceipt(prev => [
+               ...prev,
+               { text: `--- REPORTE ${registerMode.toUpperCase()} ---`, type: 'info' },
+               { label: 'EFECTIVO EN CAJA', value: formatCurrency(drawerCash), type: 'item' },
+               { text: '----------------------', type: 'info' }
+           ]);
+           setDrawerOpen(true);
+           setStatusIndicator(`REP. ${registerMode.toUpperCase()} OK`);
+           setLastCompletedTx({ type: 'report', mode: registerMode, amount: drawerCash });
+           
+           if (registerMode === 'z') {
+               setDrawerCash(0); // Z borra la memoria
+           }
+           return;
+        }
+
+        if (!isSalesMode) return;
+        if (total === 0) return;
+
+        let tendered = parseInt(display) || 0;
+        
+        if (tendered === 0) {
+          tendered = total; 
+        }
+        
+        if (tendered < total) {
+          triggerError(); 
+          return;
+        }
+
+        const change = tendered - total;
+        
+        setReceipt(prev => [
+          ...prev,
+          { label: 'TOTAL', value: formatCurrency(total), type: 'total' },
+          { label: 'EFECTIVO', value: formatCurrency(tendered), type: 'tender' },
+          { label: 'CAMBIO', value: formatCurrency(change), type: 'change' },
+          { text: '----------------------', type: 'info' }
+        ]);
+
+        setDrawerCash(prev => prev + total); // Sumar venta a la caja
+        setLastCompletedTx({ type: 'sale', total, tendered, change });
+        setDisplay(change.toString());
+        setStatusIndicator('CAMBIO');
+        setTotal(0);
+        setLastEntry(null);
+        setDrawerOpen(true);
+      };
+
+      const handleVoid = () => {
+        if (registerMode === 'off') return;
+        if (!isSalesMode || errorState || evaluation.status !== 'none') return;
+        if (!lastEntry) {
+          triggerError();
+          return;
+        }
+
+        setTotal(prev => prev - lastEntry.amount);
+        setReceipt(prev => [
+          ...prev,
+          { label: `ANULAR DEP${lastEntry.dept}`, value: `-${formatCurrency(lastEntry.amount)}`, type: 'void' }
+        ]);
+        
+        setLastEntry(null);
+        setDisplay('0');
+      };
+
+      const handleQtyTime = () => {
+        if (registerMode === 'off') return;
+        if (!isSalesMode || errorState || evaluation.status !== 'none') return;
+        const qty = parseInt(display);
+        if (qty > 0) {
+          setMultiplier(qty);
+          setDisplay('0');
+          setStatusIndicator(`CANT: ${qty}`);
+        } else {
+          triggerError();
+        }
+      };
+
+      const handlePaidOut = () => {
+          if (registerMode === 'off') return;
+          if (!isSalesMode || errorState || evaluation.status !== 'none') return;
+          const amount = parseInt(display) || 0;
+          if (amount > 0) {
+              setReceipt(prev => [...prev, { label: 'SALIDA (PO)', value: `-${formatCurrency(amount)}`, type: 'void' }]);
+              setDrawerCash(prev => prev - amount); // Restar salida de la caja
+              setLastCompletedTx({ type: 'po', amount });
+              setDisplay('0');
+              setDrawerOpen(true);
+              setStatusIndicator('SALIDA PO');
+          } else {
+              triggerError();
+          }
+      };
+
+      const handleReceivedOnAccount = () => {
+          if (registerMode === 'off') return;
+          if (!isSalesMode || errorState || evaluation.status !== 'none') return;
+          const amount = parseInt(display) || 0;
+          if (amount > 0) {
+              setReceipt(prev => [...prev, { label: 'ENTRADA (RA)', value: formatCurrency(amount), type: 'item' }]);
+              setDrawerCash(prev => prev + amount); // Sumar entrada a la caja
+              setLastCompletedTx({ type: 'ra', amount });
+              setDisplay('0');
+              setDrawerOpen(true);
+              setStatusIndicator('ENTRADA RA');
+          } else {
+              triggerError();
+          }
+      };
+
+      // --- GAME LEVELS ---
+      const guidedLevels = [
+        {
+          id: 1, type: 'sale', character: { name: 'Cliente Joven', icon: User, color: 'text-blue-600', role: 'Cliente' },
+          dialogue: "¡Hola! Necesito un Acetaminofén por favor. Aquí tienes un billete de $10.000.",
+          mockItems: [{ icon: Pill, color: 'blue', name: 'Acetaminofén', price: 3500 }],
+          mockMoney: 10000, expected: { total: 3500, tendered: 10000 },
+          hint: "Asegúrate que la llave esté en REG1 o REG2. Registra 3500 en DEP 2. Presiona Subtotal. Digita 10000 y presiona TOTAL."
+        },
+        {
+          id: 2, type: 'sale', character: { name: 'Enfermera', icon: User, color: 'text-green-600', role: 'Cliente' },
+          dialogue: "Buenas tardes. Necesito llevarme 10 de estas jeringas, creo que tengo el cambio exacto.",
+          mockItems: Array(3).fill({ icon: Syringe, color: 'green', name: 'Jeringa', price: 800 }),
+          mockMoney: 8000, expected: { total: 8000, tendered: 8000 },
+          hint: "Usa el multiplicador: 10 -> [qty/time] -> 800 -> DEP 3. Si pagan exacto puedes presionar TOTAL directo."
+        },
+        {
+          id: 3, type: 'sale_with_void', character: { name: 'Señor Indeciso', icon: User, color: 'text-purple-600', role: 'Cliente' },
+          dialogue: "Me llevo la crema dental... espera, no, no me alcanza. Mejor solo dame la pastilla.",
+          mockItems: [{ icon: Pill, color: 'blue', name: 'Pastilla OTC', price: 2000 }],
+          mockMoney: 2000, expected: { total: 2000, tendered: 2000 },
+          hint: "Simula el error: Registra 6000 en DEP 4, presiona [void] inmediatamente. Luego registra los 2000 en DEP 2 y cobra."
+        },
+        {
+          id: 4, type: 'po', character: { name: 'Repartidor', icon: Truck, color: 'text-orange-600', role: 'Proveedor' },
+          dialogue: "Traigo el pedido de alcohol, el administrador dijo que me pagabas de la caja. Son $8.000.",
+          mockItems: [], mockMoney: -8000, expected: { amount: 8000 },
+          hint: "No es venta. Digita 8000 y presiona la tecla verde [chg/PO] para registrar la salida de dinero."
+        },
+        {
+          id: 5, type: 'ra', character: { name: 'Gerente', icon: UserCog, color: 'text-slate-700', role: 'Administración' },
+          dialogue: "Aquí tienes el dinero de base para arrancar el turno. Cuéntalo bien, son $100.000 exactos.",
+          mockItems: [], mockMoney: 100000, expected: { amount: 100000 },
+          hint: "No es venta. Digita 100000 y presiona la tecla verde [chk/RA] para ingresar el fondo de caja."
+        }
+      ];
+
+      const freeLevels = [
+        {
+          id: 6, type: 'sale', character: { name: 'Señora Tos', icon: User, color: 'text-pink-600', role: 'Cliente' },
+          dialogue: "Deme ese jarabe para la tos que está allí. Le pago con uno de $20.000.",
+          mockItems: [{ icon: Pill, color: 'pink', name: 'Jarabe', price: 12500 }],
+          mockMoney: 20000, expected: { total: 12500, tendered: 20000 }
+        },
+        {
+          id: 7, type: 'sale', character: { name: 'Paramédico', icon: User, color: 'text-teal-600', role: 'Cliente' },
+          dialogue: "Necesito 5 vendas elásticas de inmediato. Aquí tiene un billete de $50.000.",
+          mockItems: Array(3).fill({ icon: Package, color: 'teal', name: 'Venda', price: 3000 }),
+          mockMoney: 50000, expected: { total: 15000, tendered: 50000 }
+        },
+        {
+          id: 8, type: 'sale_with_void', character: { name: 'Doña María', icon: User, color: 'text-indigo-600', role: 'Cliente' },
+          dialogue: "Deme el antibiótico de 25.000... uy no, está muy caro, no lo llevo. Solo cobraré las gasitas de 2.000.",
+          mockItems: [{ icon: Package, color: 'indigo', name: 'Gasas', price: 2000 }],
+          mockMoney: 2000, expected: { total: 2000, tendered: 2000 }
+        },
+        {
+          id: 9, type: 'po', character: { name: 'Aseo', icon: Truck, color: 'text-amber-600', role: 'Servicios' },
+          dialogue: "Vengo a cobrar la recolección de residuos biológicos de esta semana. Son $15.000.",
+          mockItems: [], mockMoney: -15000, expected: { amount: 15000 }
+        },
+        {
+          id: 10, type: 'ra', character: { name: 'Supervisor', icon: UserCog, color: 'text-slate-800', role: 'Administración' },
+          dialogue: "Te dejo estos $50.000 en monedas para que tengas buen cambio hoy. Que te rinda.",
+          mockItems: [], mockMoney: 50000, expected: { amount: 50000 }
+        }
+      ];
+
+      const activeLevels = gameMode === 'guided' ? guidedLevels : freeLevels;
+      const currentCustomer = activeLevels[currentLevel] || activeLevels[0];
+
+      // --- START & RESET ---
+      const startGame = (mode) => {
+          setGameMode(mode);
+          setCurrentLevel(0);
+          setRegisterMode('reg1');
+          resetRegister();
+      };
+
+      const returnToMenu = () => {
+          setGameMode('menu');
+          resetRegister();
+      };
+
+      const resetRegister = () => {
+          setReceipt([]);
+          setTotal(0);
+          setDisplay('0');
+          setDrawerCash(0);
+          setLastCompletedTx(null);
+          setDrawerOpen(false);
+          setEvaluation({ status: 'none', message: '', isFinal: false });
+          setErrorState(false);
+          setStatusIndicator('');
+          setMultiplier(1);
+      };
+
+      // --- EVALUATION LOGIC ---
+      const evaluateTransaction = () => {
+          if (!lastCompletedTx) {
+              setEvaluation({ 
+                  status: 'error', 
+                  message: 'No has cerrado ninguna operación. ¡Termina de atender en la registradora primero!',
+                  isFinal: false
+              });
+              return;
+          }
+          
+          if (lastCompletedTx.type === 'report') {
+              setEvaluation({ 
+                  status: 'error', 
+                  message: `Generaste un reporte ${lastCompletedTx.mode.toUpperCase()} en lugar de atender al cliente. Asegúrate de estar en modo REG1 o REG2.`,
+                  isFinal: false
+              });
+              return;
+          }
+
+          const expected = currentCustomer.expected;
+
+          if (currentCustomer.type === 'sale' || currentCustomer.type === 'sale_with_void') {
+              if (lastCompletedTx.type !== 'sale') {
+                  setEvaluation({ status: 'error', message: 'Te equivocaste de operación. Esto era una venta normal.', isFinal: false }); return;
+              }
+              if (lastCompletedTx.total !== expected.total) {
+                  setEvaluation({ status: 'error', message: `Le cobraste ${formatCurrency(lastCompletedTx.total)} al cliente, pero el total correcto era ${formatCurrency(expected.total)}.`, isFinal: false }); return;
+              }
+              if (lastCompletedTx.tendered !== expected.tendered) {
+                  setEvaluation({ status: 'error', message: `El cliente te dio ${formatCurrency(expected.tendered)}, pero tú registraste ${formatCurrency(lastCompletedTx.tendered)} en efectivo.`, isFinal: false }); return;
+              }
+              
+              if (currentCustomer.type === 'sale_with_void') {
+                  const hasVoid = receipt.some(r => r.type === 'void');
+                  if (!hasVoid) {
+                     setEvaluation({ status: 'error', message: '¡No usaste la tecla VOID! Debías simular el error marcando el primer artículo y luego anulándolo.', isFinal: false }); return;
+                  }
+              }
+          } else if (currentCustomer.type === 'po') {
+              if (lastCompletedTx.type !== 'po') {
+                  setEvaluation({ status: 'error', message: '¡Error! Debías registrar esto como un pago a proveedor usando la tecla [PO].', isFinal: false }); return;
+              }
+              if (lastCompletedTx.amount !== expected.amount) {
+                  setEvaluation({ status: 'error', message: `El proveedor necesitaba ${formatCurrency(expected.amount)} pero registraste ${formatCurrency(lastCompletedTx.amount)}.`, isFinal: false }); return;
+              }
+          } else if (currentCustomer.type === 'ra') {
+              if (lastCompletedTx.type !== 'ra') {
+                  setEvaluation({ status: 'error', message: '¡Error! Esto era un ingreso de base, debías usar la tecla [RA].', isFinal: false }); return;
+              }
+              if (lastCompletedTx.amount !== expected.amount) {
+                  setEvaluation({ status: 'error', message: `La base era de ${formatCurrency(expected.amount)} pero registraste ${formatCurrency(lastCompletedTx.amount)}.`, isFinal: false }); return;
+              }
+          }
+
+          if (currentLevel === activeLevels.length - 1) {
+              setEvaluation({ status: 'success', message: '¡Has completado tu turno perfectamente! Excelente trabajo.', isFinal: true });
+          } else {
+              setEvaluation({ status: 'success', message: '¡Operación perfecta! El balance de la caja es correcto.', isFinal: false });
+          }
+      };
+
+      const nextLevel = () => {
+          if (evaluation.isFinal) {
+              returnToMenu();
+          } else {
+              setReceipt([]);
+              setTotal(0);
+              setDisplay('0');
+              setLastCompletedTx(null);
+              setDrawerOpen(false);
+              setEvaluation({ status: 'none', message: '', isFinal: false });
+              setCurrentLevel(currentLevel + 1);
+          }
+      };
+
+      const retryLevel = () => {
+          setReceipt([]);
+          setTotal(0);
+          setDisplay('0');
+          setLastCompletedTx(null);
+          setDrawerOpen(false);
+          setEvaluation({ status: 'none', message: '', isFinal: false });
+          setErrorState(false);
+          setStatusIndicator('');
+          setMultiplier(1);
+      };
+
+      // --- DISPLAY LOGIC ---
+      let lcdText = display;
+      let lcdBg = errorState ? 'bg-red-200' : 'bg-[#9fb39f]';
+      let lcdTextColor = errorState ? 'text-red-900' : 'text-[#1a2b1a]';
+
+      if (registerMode === 'off') {
+          lcdText = '';
+          lcdBg = 'bg-[#6b7a6b]'; // Darker state to simulate OFF
+      } else if (registerMode === 'x' && display === '0' && !errorState) {
+          lcdText = 'X 0.00';
+      } else if (registerMode === 'z' && display === '0' && !errorState) {
+          lcdText = 'Z 0.00';
+      } else if (registerMode === 'prog' && display === '0' && !errorState) {
+          lcdText = 'P 0.00';
+      }
+
+      // --- BUTTON STYLES ---
+      const btnBlack = "bg-[#111] text-gray-100 hover:bg-[#222] rounded shadow-md border-b-4 border-black active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center p-1 text-xs select-none transition-all";
+      const btnGreen = "bg-[#22c55e] text-white hover:bg-[#16a34a] rounded shadow-md border-b-4 border-[#14532d] active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center p-1 text-xs select-none transition-all";
+      const btnBlue = "bg-[#3b82f6] text-white hover:bg-[#2563eb] rounded shadow-md border-b-4 border-[#1e3a8a] active:border-b-0 active:translate-y-1 flex flex-col items-center justify-center p-1 text-xs select-none transition-all";
+      const btnOrange = "bg-[#f97316] text-white hover:bg-[#ea580c] rounded shadow-md border-b-4 border-[#9a3412] active:border-b-0 active:translate-y-1 flex items-center justify-center p-1 text-2xl font-bold col-span-2 select-none transition-all";
+
+      // --- MODE SWITCH CONFIG ---
+      const MODES = ['off', 'reg1', 'reg2', 'x', 'z', 'prog'];
+      const MODE_POSITIONS = {
+          'off': '0%',
+          'reg1': '18%',
+          'reg2': '38%',
+          'x': '57%',
+          'z': '76%',
+          'prog': 'calc(100% - 24px)'
+      };
+
+      // --- MAIN MENU RENDER ---
+      if (gameMode === 'menu') {
+        return (
+          <div className="flex flex-col h-screen bg-slate-900 items-center justify-center font-sans text-white relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full opacity-10 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-blue-400 via-slate-900 to-slate-900 pointer-events-none"></div>
+            
+            <div className="z-10 text-center mb-12">
+                <h1 className="text-5xl font-black mb-2 tracking-tight text-emerald-400 font-serif italic drop-shadow-lg">ROYAL <span className="text-white font-sans not-italic font-bold">410DX</span></h1>
+                <p className="text-xl text-slate-300 font-medium tracking-wide uppercase">Simulador de Entrenamiento Farmacéutico</p>
+            </div>
+
+            <div className="flex flex-wrap justify-center gap-6 z-10 max-w-6xl px-4">
+               {/* GUIDED MODE */}
+               <div 
+                 onClick={() => startGame('guided')}
+                 className="w-[300px] bg-slate-800 border-2 border-slate-700 hover:border-emerald-500 rounded-2xl p-6 flex flex-col items-center cursor-pointer transition-all hover:scale-105 shadow-2xl group"
+               >
+                  <div className="w-16 h-16 bg-slate-700 group-hover:bg-emerald-500 rounded-full flex items-center justify-center mb-4 transition-colors">
+                     <BookOpen size={32} className="text-emerald-400 group-hover:text-white" />
+                  </div>
+                  <h2 className="text-xl font-bold mb-2 text-white">Práctica Guiada</h2>
+                  <p className="text-slate-400 text-center text-xs mb-6">
+                    5 niveles con instrucciones paso a paso, pistas en pantalla y explicaciones detalladas. Ideal para principiantes.
+                  </p>
+                  <button className="mt-auto px-4 py-2 bg-emerald-600/20 text-emerald-400 font-bold rounded-full group-hover:bg-emerald-500 group-hover:text-white transition-colors w-full border border-emerald-500/50 text-sm">
+                    Iniciar Tutorial
+                  </button>
+               </div>
+
+               {/* FREE MODE */}
+               <div 
+                 onClick={() => startGame('free')}
+                 className="w-[300px] bg-slate-800 border-2 border-slate-700 hover:border-blue-500 rounded-2xl p-6 flex flex-col items-center cursor-pointer transition-all hover:scale-105 shadow-2xl group"
+               >
+                  <div className="w-16 h-16 bg-slate-700 group-hover:bg-blue-500 rounded-full flex items-center justify-center mb-4 transition-colors">
+                     <GraduationCap size={32} className="text-blue-400 group-hover:text-white" />
+                  </div>
+                  <h2 className="text-xl font-bold mb-2 text-white">Práctica Libre</h2>
+                  <p className="text-slate-400 text-center text-xs mb-6">
+                    5 niveles desafiantes sin pistas. Demuestra lo que aprendiste atendiendo a los clientes por tu cuenta.
+                  </p>
+                  <button className="mt-auto px-4 py-2 bg-blue-600/20 text-blue-400 font-bold rounded-full group-hover:bg-blue-500 group-hover:text-white transition-colors w-full border border-blue-500/50 text-sm">
+                    Iniciar Evaluación
+                  </button>
+               </div>
+
+               {/* SANDBOX MODE */}
+               <div 
+                 onClick={() => startGame('sandbox')}
+                 className="w-[300px] bg-slate-800 border-2 border-slate-700 hover:border-purple-500 rounded-2xl p-6 flex flex-col items-center cursor-pointer transition-all hover:scale-105 shadow-2xl group"
+               >
+                  <div className="w-16 h-16 bg-slate-700 group-hover:bg-purple-500 rounded-full flex items-center justify-center mb-4 transition-colors">
+                     <PlaySquare size={32} className="text-purple-400 group-hover:text-white" />
+                  </div>
+                  <h2 className="text-xl font-bold mb-2 text-white">Modo Sandbox</h2>
+                  <p className="text-slate-400 text-center text-xs mb-6">
+                    Práctica abierta sin clientes ni evaluaciones. Explora la registradora y sus distintos modos (X, Z) libremente.
+                  </p>
+                  <button className="mt-auto px-4 py-2 bg-purple-600/20 text-purple-400 font-bold rounded-full group-hover:bg-purple-500 group-hover:text-white transition-colors w-full border border-purple-500/50 text-sm">
+                    Entrar a Caja
+                  </button>
+               </div>
+            </div>
+
+            <div className="absolute bottom-6 text-slate-500 text-sm font-medium">
+                Desarrollado para entrenamiento operativo en caja
+            </div>
+          </div>
+        );
+      }
+
+      // --- GAME UI RENDER ---
+      return (
+        <div className="flex h-screen bg-slate-100 font-sans text-neutral-800 overflow-hidden relative">
+          
+          {/* EVALUATION OVERLAY (Not in sandbox) */}
+          {gameMode !== 'sandbox' && evaluation.status !== 'none' && (
+            <div className="absolute inset-0 bg-black/60 z-50 flex justify-center items-center backdrop-blur-sm">
+               <div className={`w-[450px] bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center text-center transform transition-transform ${evaluation.status === 'success' ? 'border-4 border-emerald-500' : 'border-4 border-red-500'}`}>
+                  
+                  {evaluation.status === 'success' ? (
+                     <>
+                       <div className="w-20 h-20 rounded-full bg-emerald-100 flex items-center justify-center mb-4 text-emerald-600">
+                         <Stamp size={48} />
+                       </div>
+                       <h2 className="text-3xl font-black text-emerald-600 tracking-wide mb-2 uppercase">
+                          {evaluation.isFinal ? '¡Turno Terminado!' : '¡Aprobado!'}
+                       </h2>
+                       <p className="text-slate-600 mb-8 font-medium">{evaluation.message}</p>
+                       <button onClick={nextLevel} className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg transition-all text-lg flex justify-center items-center gap-2">
+                         {evaluation.isFinal ? <><Home size={24}/> Volver al Menú</> : <>Siguiente Cliente <ChevronRight size={24} /></>}
+                       </button>
+                     </>
+                  ) : (
+                     <>
+                       <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center mb-4 text-red-600">
+                         <AlertCircle size={48} />
+                       </div>
+                       <h2 className="text-3xl font-black text-red-600 tracking-wide mb-2 uppercase">Error en Caja</h2>
+                       <p className="text-slate-600 mb-8">{evaluation.message}</p>
+                       <button onClick={retryLevel} className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-lg transition-all text-lg flex justify-center items-center gap-2">
+                         <RefreshCw size={24} /> Reintentar Cliente
+                       </button>
+                     </>
+                  )}
+               </div>
+            </div>
+          )}
+
+          {/* TOP BAR / RETURN BUTTON */}
+          <div className="absolute top-4 left-4 z-30">
+              <button 
+                onClick={returnToMenu}
+                className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white px-3 py-1.5 rounded-lg shadow border border-slate-600 text-xs font-bold transition-colors"
+              >
+                 <Home size={16} /> Menú Principal
+              </button>
+          </div>
+
+          {/* LEFT PANEL: MANUAL CHEAT SHEET */}
+          <div className="w-80 bg-white border-r border-slate-300 flex flex-col shadow-xl z-20 overflow-hidden pt-12">
+            <div className={`p-5 border-b border-slate-200 text-white ${gameMode === 'guided' ? 'bg-emerald-700' : gameMode === 'free' ? 'bg-blue-800' : 'bg-purple-800'}`}>
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-lg ${gameMode === 'guided' ? 'bg-emerald-600 text-emerald-100' : gameMode === 'free' ? 'bg-blue-700 text-blue-100' : 'bg-purple-700 text-purple-100'}`}>
+                  <BookOpen size={24} />
+                </div>
+                <div>
+                  <h1 className="text-lg font-bold">Manual Rápido</h1>
+                  <p className="text-xs opacity-80 uppercase tracking-wider">
+                    {gameMode === 'guided' ? 'Modo Guiado' : gameMode === 'free' ? 'Modo Libre' : 'Modo Sandbox'}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-5 text-sm custom-scrollbar">
+               <h3 className="font-bold text-slate-700 mb-3 uppercase text-xs tracking-wider border-b pb-2">Procesos Comunes</h3>
+               
+               <div className="space-y-4 mb-6">
+                  <div>
+                     <strong className="text-slate-800 block mb-1">1. Venta Normal</strong>
+                     <ol className="list-decimal pl-4 text-slate-600 space-y-1 text-xs">
+                        <li>Asegura que la llave está en <span className="font-mono bg-slate-100 px-1 border rounded">reg1</span>.</li>
+                        <li>Digita precio.</li>
+                        <li>Presiona Depto <span className="font-mono bg-slate-100 px-1 border rounded">2/10</span>.</li>
+                        <li>Presiona <span className="font-mono bg-blue-100 text-blue-800 px-1 border border-blue-200 rounded">#/ST/NS</span>.</li>
+                        <li>Digita dinero recibido.</li>
+                        <li>Presiona <span className="font-mono bg-blue-100 text-blue-800 px-1 border border-blue-200 rounded">TOTAL</span>.</li>
+                     </ol>
+                  </div>
+
+                  <div>
+                     <strong className="text-slate-800 block mb-1">2. Venta Múltiple</strong>
+                     <ol className="list-decimal pl-4 text-slate-600 space-y-1 text-xs">
+                        <li>Digita cantidad.</li>
+                        <li>Presiona <span className="font-mono bg-slate-100 px-1 border rounded">qty/time</span>.</li>
+                        <li>Sigue con Venta Normal.</li>
+                     </ol>
+                  </div>
+
+                  <div>
+                     <strong className="text-slate-800 block mb-1">3. Salidas y Entradas</strong>
+                     <ul className="list-disc pl-4 text-slate-600 space-y-1 text-xs">
+                        <li><strong>Pagar proveedor:</strong> Digita monto y presiona <span className="font-mono bg-green-100 text-green-800 px-1 border border-green-200 rounded">PO</span>.</li>
+                        <li><strong>Ingresar base:</strong> Digita monto y presiona <span className="font-mono bg-green-100 text-green-800 px-1 border border-green-200 rounded">RA</span>.</li>
+                     </ul>
+                  </div>
+               </div>
+
+               {/* FAQ ACCORDION */}
+               <div className="mt-2 border-t pt-4">
+                  <button 
+                    onClick={() => setFaqOpen(!faqOpen)}
+                    className="w-full flex items-center justify-between font-bold text-slate-700 uppercase text-xs tracking-wider bg-slate-50 p-2 rounded-lg border border-slate-200 hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <HelpCircle size={16} className="text-slate-500" />
+                      <span>Preguntas Frecuentes</span>
+                    </div>
+                    <ChevronRight size={16} className={`transform transition-transform ${faqOpen ? 'rotate-90 text-blue-500' : 'text-slate-400'}`} />
+                  </button>
+
+                  {faqOpen && (
+                    <div className="mt-3 space-y-3 text-xs text-slate-600 pb-4 px-1">
+                       <details className="group border-b border-slate-100 pb-2">
+                          <summary className="font-semibold text-slate-700 cursor-pointer list-none flex items-start gap-1">
+                             <ChevronRight size={14} className="group-open:rotate-90 transition-transform mt-0.5 text-slate-400 flex-shrink-0"/> 
+                             ¿Para qué sirve la llave de Modos?
+                          </summary>
+                          <p className="pl-5 mt-1 leading-relaxed">
+                             <strong>OFF:</strong> Apaga la caja.<br/>
+                             <strong>REG1 / REG2:</strong> Modos de venta y facturación.<br/>
+                             <strong>X:</strong> Modo lectura. Presiona TOTAL para imprimir cuánto hay en caja sin borrar datos.<br/>
+                             <strong>Z:</strong> Modo cierre. Presiona TOTAL para imprimir el reporte final y resetear la caja a $0.
+                          </p>
+                       </details>
+                       <details className="group border-b border-slate-100 pb-2">
+                          <summary className="font-semibold text-slate-700 cursor-pointer list-none flex items-start gap-1">
+                             <ChevronRight size={14} className="group-open:rotate-90 transition-transform mt-0.5 text-slate-400 flex-shrink-0"/> 
+                             ¿Me equivoqué al digitar un precio?
+                          </summary>
+                          <p className="pl-5 mt-1 leading-relaxed">Si digitaste un número mal pero <strong>aún no</strong> has presionado un departamento, presiona la tecla naranja ancha <strong className="bg-orange-500 text-white px-1 rounded shadow-sm">C</strong> para limpiar la pantalla.</p>
+                       </details>
+                       
+                       <details className="group border-b border-slate-100 pb-2">
+                          <summary className="font-semibold text-slate-700 cursor-pointer list-none flex items-start gap-1">
+                             <ChevronRight size={14} className="group-open:rotate-90 transition-transform mt-0.5 text-slate-400 flex-shrink-0"/> 
+                             ¿Ya presioné el departamento y me equivoqué?
+                          </summary>
+                          <p className="pl-5 mt-1 leading-relaxed">Presiona <strong>inmediatamente</strong> la tecla negra <strong className="bg-slate-800 text-white px-1 rounded border border-slate-600">void</strong> en la esquina superior izquierda. Esto anulará ese producto y la cuenta seguirá abierta.</p>
+                       </details>
+                       
+                       <details className="group border-b border-slate-100 pb-2">
+                          <summary className="font-semibold text-slate-700 cursor-pointer list-none flex items-start gap-1">
+                             <ChevronRight size={14} className="group-open:rotate-90 transition-transform mt-0.5 text-slate-400 flex-shrink-0"/> 
+                             ¿La máquina pita sin parar (Error E)?
+                          </summary>
+                          <p className="pl-5 mt-1 leading-relaxed text-red-700 font-medium">Esto pasa por presionar teclas en desorden. Presiona la tecla naranja ancha <strong className="bg-orange-500 text-white px-1 rounded shadow-sm">C</strong> para desbloquearla.</p>
+                       </details>
+
+                       <details className="group border-b border-slate-100 pb-2">
+                          <summary className="font-semibold text-slate-700 cursor-pointer list-none flex items-start gap-1">
+                             <ChevronRight size={14} className="group-open:rotate-90 transition-transform mt-0.5 text-slate-400 flex-shrink-0"/> 
+                             ¿Para qué sirve la tecla #/ST/NS?
+                          </summary>
+                          <p className="pl-5 mt-1 leading-relaxed">Significa SubTotal / No Sale. Sirve para ver cuánto suma la cuenta antes de cobrar. Si la caja está en 0 y la presionas, abrirá el cajón sin registrar venta (No Venta).</p>
+                       </details>
+                    </div>
+                  )}
+               </div>
+            </div>
+          </div>
+
+          {/* RIGHT PANEL: SIMULATION ENVIRONMENT */}
+          <div className="flex-1 flex flex-col bg-slate-300 relative overflow-y-auto">
+            
+            {/* THE COUNTER (Customer Interaction or Sandbox Placeholder) */}
+            {gameMode === 'sandbox' ? (
+              <div className="bg-white mx-8 mt-6 rounded-2xl shadow-md border border-slate-300 flex flex-col justify-center items-center h-28 relative overflow-hidden">
+                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-400 to-fuchsia-500"></div>
+                 <PlaySquare size={32} className="text-slate-300 mb-2" />
+                 <h2 className="text-sm font-bold text-slate-500 uppercase tracking-widest">Modo Sandbox Activo</h2>
+                 <p className="text-xs text-slate-400">Practica hacer ventas y emitir Reportes X/Z libremente.</p>
+              </div>
+            ) : (
+              <div className="bg-white mx-8 mt-6 rounded-2xl shadow-md border border-slate-300 flex flex-col flex-shrink-0 h-40 relative overflow-hidden">
+                <div className={`absolute top-0 left-0 w-full h-1 ${gameMode === 'guided' ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : 'bg-gradient-to-r from-blue-400 to-indigo-500'}`}></div>
+                
+                <div className="flex items-stretch h-full">
+                   {/* Customer Avatar & Bubble */}
+                   <div className="w-1/2 p-4 flex items-center gap-4 bg-slate-50 border-r border-slate-200">
+                      <div className={`w-16 h-16 rounded-full bg-white shadow-sm border border-slate-200 flex items-center justify-center flex-shrink-0 ${currentCustomer.character.color}`}>
+                         <currentCustomer.character.icon size={36} />
+                      </div>
+                      <div className="relative">
+                         <div className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">{currentCustomer.character.role} - Turno {currentLevel + 1}/5</div>
+                         <div className="bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-none shadow-sm text-sm text-slate-700 italic relative">
+                            "{currentCustomer.dialogue}"
+                            <div className="absolute top-0 -left-2 w-3 h-3 bg-white border-l border-t border-slate-200 transform -rotate-45"></div>
+                         </div>
+                      </div>
+                   </div>
+
+                   {/* Items & Money on Counter */}
+                   <div className="w-1/2 p-4 flex items-center justify-center gap-6">
+                       <div className="flex items-end gap-2">
+                          {currentCustomer.mockItems.map((item, i) => {
+                             const Icon = item.icon;
+                             return (
+                               <div key={i} className={`bg-${item.color}-50 border border-${item.color}-200 p-2 rounded-lg flex flex-col items-center shadow-sm relative ${i > 0 ? '-ml-6' : ''}`} style={{zIndex: 10-i}}>
+                                   <Icon size={24} className={`text-${item.color}-600 mb-1`} />
+                                   <span className="bg-white px-1.5 py-0.5 rounded text-[10px] font-bold shadow-sm text-slate-700 border border-slate-100">{formatCurrency(item.price)}</span>
+                               </div>
+                             );
+                          })}
+                          {currentCustomer.mockItems.length === 0 && (
+                              <div className="text-slate-400 text-sm font-medium flex items-center gap-2 bg-slate-50 px-4 py-2 rounded-lg border border-slate-200">
+                                  <Wallet size={20}/> Flujo Manual
+                              </div>
+                          )}
+                       </div>
+
+                       <div className="flex items-center gap-2">
+                          {currentCustomer.mockMoney > 0 && (
+                             <div className="bg-emerald-600 text-white font-mono font-bold py-1.5 px-4 rounded-sm shadow-md transform -rotate-3 border-2 border-emerald-800 text-sm">
+                               {formatCurrency(currentCustomer.mockMoney)} COP
+                             </div>
+                          )}
+                          {currentCustomer.mockMoney < 0 && (
+                             <div className="text-red-600 font-bold font-mono text-sm border-2 border-red-200 bg-red-50 py-1.5 px-3 rounded-sm shadow-sm">
+                               Dar: {formatCurrency(Math.abs(currentCustomer.mockMoney))}
+                             </div>
+                          )}
+                       </div>
+                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* INSTRUCTIONS HINT BUBBLE (ONLY IN GUIDED MODE) */}
+            {gameMode === 'guided' && currentCustomer.hint && (
+              <div className="mx-8 mt-3 flex items-center gap-2 text-sm text-slate-600 bg-yellow-50 p-2 px-4 rounded-lg border border-yellow-200 shadow-sm">
+                  <span className="font-bold text-yellow-700">Pista:</span> {currentCustomer.hint}
+              </div>
+            )}
+
+            {/* THE CASH REGISTER CONTAINER & EVALUATE BUTTON */}
+            <div className={`flex-1 flex justify-center items-start relative pb-16 gap-8 ${gameMode === 'guided' ? 'pt-6' : 'pt-10'}`}>
+              
+              {/* REGISTER BODY */}
+              <div className="w-[700px] bg-[#1c1c1c] rounded-2xl shadow-2xl relative flex flex-col p-6 border-b-[16px] border-[#0a0a0a] z-20 flex-shrink-0">
+                
+                {/* Top Area: Printer, LCD, Switch */}
+                <div className="flex w-full h-44 mb-2">
+                   
+                   {/* Left: Printer Area */}
+                   <div className="w-1/3 relative">
+                      <div className="absolute -top-12 left-4 w-48 h-52 bg-[#fcfcfc] shadow-[0_-5px_15px_rgba(0,0,0,0.2)] border-x border-t border-slate-300 flex flex-col z-10 rounded-t-sm">
+                         <div className="flex-1 overflow-y-auto p-4 font-mono text-[11px] leading-tight text-neutral-800 flex flex-col scrollbar-hide pb-12">
+                            <div className="text-center font-bold mb-3 pb-2 border-b border-dashed border-neutral-400">
+                              FARMACIA ROYAL<br/>
+                              SIMULADOR 410DX<br/>
+                              {new Date().toLocaleDateString('es-CO')}
+                            </div>
+                            {receipt.map((line, i) => (
+                              <div key={i} className={`flex justify-between w-full ${line.type === 'total' ? 'font-bold text-[13px] mt-2 border-t border-slate-300 pt-1' : ''} ${line.type === 'void' ? 'text-red-600 line-through' : ''}`}>
+                                {line.label ? (
+                                  <>
+                                    <span>{line.label}</span>
+                                    <span>{line.value}</span>
+                                  </>
+                                ) : (
+                                  <span className="w-full text-center text-slate-500">{line.text}</span>
+                                )}
+                              </div>
+                            ))}
+                            <div ref={receiptEndRef} />
+                         </div>
+                         {/* Printer exit slot gradient */}
+                         <div className="absolute bottom-0 w-full h-8 bg-gradient-to-t from-[#111] to-transparent"></div>
+                      </div>
+                   </div>
+
+                   {/* Right: LCD & Switch Area */}
+                   <div className="w-2/3 flex flex-col items-end pt-2 pr-2">
+                       
+                       {/* LCD Panel */}
+                       <div className={`w-[320px] h-20 ${lcdBg} rounded-lg border-[10px] border-[#0f0f0f] shadow-[inset_0_5px_10px_rgba(0,0,0,0.6)] flex flex-col justify-center px-4 font-mono relative mb-2 transition-colors`}>
+                          <div className="absolute top-1 left-2 text-[10px] font-bold text-slate-700/60 opacity-80">{statusIndicator}</div>
+                          <div className={`text-right text-4xl font-bold tracking-widest ${lcdTextColor}`}>
+                            {lcdText}
+                          </div>
+                       </div>
+                       
+                       {/* Brand Logo */}
+                       <div className="w-[320px] text-right text-white font-serif italic text-xl font-bold tracking-widest mb-3 pr-2">
+                           ROYAL
+                       </div>
+                       
+                       {/* Key Switch Slider */}
+                       <div className="w-[280px] flex flex-col items-center pl-8">
+                           <div className="flex gap-4 text-[11px] font-bold mb-1.5 font-sans w-[210px] justify-between relative px-2">
+                              {MODES.map((mode) => (
+                                 <div 
+                                    key={mode} 
+                                    onClick={() => setRegisterMode(mode)}
+                                    className={`flex flex-col items-center cursor-pointer z-10 ${registerMode === mode ? 'text-white' : 'text-slate-400 hover:text-slate-300'}`}
+                                 >
+                                    <span>{mode}</span>
+                                    {registerMode === mode && <div className="w-1 h-1 bg-emerald-500 rounded-full absolute -bottom-1"></div>}
+                                 </div>
+                              ))}
+                           </div>
+                           
+                           <div className="relative w-[210px] h-4 bg-black rounded-full shadow-[inset_0_2px_4px_rgba(0,0,0,0.8)] border border-[#333] mb-1">
+                              <div 
+                                 className="absolute top-0 w-6 h-6 bg-slate-300 rounded cursor-pointer border-b-2 border-slate-500 shadow-md transform -translate-y-1 transition-all duration-200 ease-out"
+                                 style={{ left: MODE_POSITIONS[registerMode] }}
+                              ></div>
+                           </div>
+                           <div className="w-[180px] h-2 bg-[#1d4ed8] rounded-t-sm shadow-sm mt-1"></div>
+                       </div>
+                   </div>
+                </div>
+
+                {/* REALISTIC KEYBOARD MATRIX */}
+                <div className="w-full bg-[#262626] p-5 rounded-xl shadow-[inset_0_4px_15px_rgba(0,0,0,0.5)] border-t border-[#333] grid grid-cols-9 gap-1.5 mt-2">
+                   
+                   {/* ROW 1 */}
+                   <button className={btnBlack} onClick={() => {}}>
+                      <ArrowUp size={16} strokeWidth={3} className="mb-0.5"/>
+                      <span className="font-bold text-[10px]">Feed</span>
+                   </button>
+                   <button className={btnBlack} onClick={handleVoid}>
+                      <span className="font-bold">void</span>
+                      <span className="text-[9px] text-slate-400">(text)</span>
+                   </button>
+                   <button className={`${btnBlack} text-xl font-bold`} onClick={() => handleNumber('7')}>7</button>
+                   <button className={`${btnBlack} text-xl font-bold`} onClick={() => handleNumber('8')}>8</button>
+                   <button className={`${btnBlack} text-xl font-bold`} onClick={() => handleNumber('9')}>9</button>
+                   <button className={btnBlack} onClick={() => handleDept(4, 'DEP 4')}>
+                      <span className="font-bold text-[11px]">4/12</span>
+                      <span className="text-[9px] text-slate-400">A/N</span>
+                   </button>
+                   <button className={btnBlack} onClick={() => handleDept(8, 'DEP 8')}>
+                      <span className="font-bold text-[11px]">8/16</span>
+                      <span className="text-[9px] text-slate-400">B/O</span>
+                   </button>
+                   <button className={btnBlack} onClick={() => {}}>
+                      <span className="font-bold text-[11px]">PLU</span>
+                      <span className="text-[9px] text-slate-400">C/P</span>
+                   </button>
+                   <button className={btnBlack} onClick={() => {}}>
+                      <span className="font-bold text-[10px] leading-tight text-center">dept<br/>shift</span>
+                   </button>
+
+                   {/* ROW 2 */}
+                   <button className={btnGreen} onClick={() => {}}>
+                      <span className="font-bold">-%</span>
+                      <span className="text-[9px] text-green-200">(caps)</span>
+                   </button>
+                   <button className={btnGreen} onClick={() => {}}>
+                      <span className="font-bold">ref/-</span>
+                      <span className="text-[9px] text-green-200">(DW)</span>
+                   </button>
+                   <button className={`${btnBlack} text-xl font-bold`} onClick={() => handleNumber('4')}>4</button>
+                   <button className={`${btnBlack} text-xl font-bold`} onClick={() => handleNumber('5')}>5</button>
+                   <button className={`${btnBlack} text-xl font-bold`} onClick={() => handleNumber('6')}>6</button>
+                   <button className={btnBlack} onClick={() => handleDept(3, 'DEP 3')}>
+                      <span className="font-bold text-[11px]">3/11</span>
+                      <span className="text-[9px] text-slate-400">D/Q</span>
+                   </button>
+                   <button className={btnBlack} onClick={() => handleDept(7, 'DEP 7')}>
+                      <span className="font-bold text-[11px]">7/15</span>
+                      <span className="text-[9px] text-slate-400">E/R</span>
+                   </button>
+                   <button className={btnBlack} onClick={() => {}}>
+                      <span className="font-bold text-[10px] leading-tight text-center">tax<br/>shift</span>
+                      <span className="text-[9px] text-slate-400 mt-0.5">F/S</span>
+                   </button>
+                   <button className={btnGreen} onClick={handleReceivedOnAccount}>
+                      <span className="font-bold text-[11px]">chk/RA</span>
+                      <span className="text-[9px] text-green-200">G/T</span>
+                   </button>
+
+                   {/* ROW 3 */}
+                   <button className={btnBlack} onClick={() => {}}>
+                      <span className="font-bold text-[11px]">Clerk</span>
+                      <span className="text-[9px] text-slate-400">(BS)</span>
+                   </button>
+                   <button className={btnBlack} onClick={handleQtyTime}>
+                      <span className="font-bold text-[11px]">qty/time</span>
+                      <span className="text-[9px] text-slate-400">(num)</span>
+                   </button>
+                   <button className={`${btnBlack} text-xl font-bold`} onClick={() => handleNumber('1')}>1</button>
+                   <button className={`${btnBlack} text-xl font-bold`} onClick={() => handleNumber('2')}>2</button>
+                   <button className={`${btnBlack} text-xl font-bold`} onClick={() => handleNumber('3')}>3</button>
+                   <button className={btnBlack} onClick={() => handleDept(2, 'DEP 2')}>
+                      <span className="font-bold text-[11px]">2/10</span>
+                      <span className="text-[9px] text-slate-400">H/U</span>
+                   </button>
+                   <button className={btnBlack} onClick={() => handleDept(6, 'DEP 6')}>
+                      <span className="font-bold text-[11px]">6/14</span>
+                      <span className="text-[9px] text-slate-400">I/V</span>
+                   </button>
+                   <button className={btnBlue} onClick={handleSubtotalNS}>
+                      <span className="font-bold text-[10px]">#/ST/NS</span>
+                      <span className="text-[9px] text-blue-200">J/W</span>
+                   </button>
+                   <button className={btnGreen} onClick={handlePaidOut}>
+                      <span className="font-bold text-[11px]">chg/PO</span>
+                      <span className="text-[9px] text-green-200">K/X</span>
+                   </button>
+
+                   {/* ROW 4 */}
+                   <button className={btnOrange} onClick={handleClear}>
+                      C
+                   </button>
+                   <button className={`${btnBlack} text-xl font-bold`} onClick={() => handleNumber('0')}>0</button>
+                   <button className={`${btnBlack} text-lg font-bold`} onClick={() => handleNumber('00')}>00</button>
+                   <button className={btnBlack} onClick={() => handleNumber('.')}>
+                      <span className="font-bold text-xl leading-none">.</span>
+                      <span className="text-[8px] text-slate-400">(space)</span>
+                   </button>
+                   <button className={btnBlack} onClick={() => handleDept(1, 'DEP 1')}>
+                      <span className="font-bold text-[11px]">1/9</span>
+                      <span className="text-[9px] text-slate-400">L/Y</span>
+                   </button>
+                   <button className={btnBlack} onClick={() => handleDept(5, 'DEP 5')}>
+                      <span className="font-bold text-[11px]">5/13</span>
+                      <span className="text-[9px] text-slate-400">M/Z</span>
+                   </button>
+                   <button className={`${btnBlue} col-span-2 pt-1.5`} onClick={handleCash}>
+                      <span className="font-bold text-[10px] leading-tight">amount tend</span>
+                      <span className="font-black text-sm leading-tight tracking-wide">TOTAL</span>
+                      <span className="text-[9px] text-blue-200 leading-tight">(enter)</span>
+                   </button>
+                </div>
+                
+                {/* CASH DRAWER */}
+                <div className="absolute -bottom-36 left-1/2 transform -translate-x-1/2 w-full max-w-[650px] z-[-1] flex justify-center">
+                  <div className={`w-[630px] h-36 bg-[#111] rounded-b-xl shadow-2xl border-b-[8px] border-x-4 border-[#080808] transition-all duration-500 ease-out flex overflow-hidden p-3 gap-2 ${drawerOpen ? 'translate-y-0 opacity-100' : '-translate-y-20 opacity-0 pointer-events-none'}`}>
+                     {Array.from({length: 4}).map((_, i) => (
+                        <div key={i} className="flex-1 bg-[#1f1f1f] border-2 border-[#0a0a0a] shadow-inner flex flex-col items-center justify-end relative rounded-sm p-1">
+                           <div className="absolute top-0 w-8 h-12 bg-gradient-to-b from-slate-400 to-slate-500 rounded-sm shadow-[0_3px_5px_rgba(0,0,0,0.5)] z-10 border-b border-slate-600"></div> 
+                           <div className="w-[90%] h-16 bg-gradient-to-br from-emerald-600 to-emerald-800 rounded border border-emerald-900 transform rotate-1 flex justify-center items-center overflow-hidden shadow-[0_2px_4px_rgba(0,0,0,0.4)]">
+                               <span className="text-emerald-900 font-serif opacity-30 text-3xl font-bold">$</span>
+                           </div>
+                        </div>
+                     ))}
+                     <button 
+                       onClick={() => setDrawerOpen(false)}
+                       className="absolute top-3 right-3 bg-black/80 text-white px-3 py-1.5 rounded text-xs font-bold hover:bg-black border border-slate-700 z-20 transition-colors shadow-md"
+                     >
+                       Cerrar Cajón
+                     </button>
+                  </div>
+                </div>
+
+              </div>
+
+              {/* ACTION BUTTON (Evaluate) - Oculto en modo Sandbox */}
+              {gameMode !== 'sandbox' && (
+                 <div className="mt-12">
+                    <button 
+                      onClick={evaluateTransaction}
+                      className={`${gameMode === 'guided' ? 'bg-emerald-600 hover:bg-emerald-500 border-emerald-800' : 'bg-blue-600 hover:bg-blue-500 border-blue-800'} text-white px-6 py-4 rounded-xl shadow-lg border-b-4 active:border-b-0 active:translate-y-1 transition-all flex flex-col items-center justify-center min-w-[180px]`}
+                    >
+                       <CheckCircle size={32} className="mb-2" />
+                       <span className="font-bold uppercase tracking-wider">Evaluar Atención</span>
+                    </button>
+                 </div>
+              )}
+
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // --- RENDER DE LA APLICACIÓN ---
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
