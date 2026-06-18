@@ -86,8 +86,8 @@
           const [evaluation, setEvaluation] = useState({ status: 'none', message: '', isFinal: false }); 
           
           const [faqOpen, setFaqOpen] = useState(false);
-          const [showManual, setShowManual] = useState(false); // Mobile Menu State
-          const [scale, setScale] = useState(1); // Responsive Scale State
+          const [showManual, setShowManual] = useState(false);
+          const [scale, setScale] = useState(1);
 
           const receiptEndRef = useRef(null);
           const registerContainerRef = useRef(null);
@@ -102,7 +102,7 @@
               const handleResize = () => {
                   if (registerContainerRef.current) {
                       const availableWidth = registerContainerRef.current.clientWidth;
-                      const targetWidth = 730; // 700px register + 30px padding
+                      const targetWidth = 730; 
                       if (availableWidth < targetWidth) {
                           setScale(availableWidth / targetWidth);
                       } else {
@@ -111,7 +111,7 @@
                   }
               };
 
-              setTimeout(handleResize, 50); // initial calculation
+              setTimeout(handleResize, 50); 
               window.addEventListener('resize', handleResize);
               return () => window.removeEventListener('resize', handleResize);
           }, [gameMode]);
@@ -515,17 +515,21 @@
                       </button>
                    </div>
                 </div>
+
+                <div className="absolute bottom-6 text-slate-500 text-sm font-medium">
+                    Simulador de Turno Operativo en Mostrador
+                </div>
               </div>
             );
           }
 
           // --- GAME UI RENDER ---
           return (
-            <div className="flex flex-col lg:flex-row h-screen w-full bg-slate-100 font-sans text-neutral-800 overflow-hidden relative">
+            <div className="flex flex-col lg:flex-row h-screen w-full bg-slate-100 font-sans text-neutral-800 overflow-hidden relative pt-14 lg:pt-0">
               
               {/* EVALUATION OVERLAY */}
               {gameMode !== 'sandbox' && evaluation.status !== 'none' && (
-                <div className="absolute inset-0 bg-black/60 z-50 flex justify-center items-center backdrop-blur-sm p-4">
+                <div className="fixed inset-0 bg-black/60 z-[60] flex justify-center items-center backdrop-blur-sm p-4">
                    <div className={`w-full max-w-[450px] bg-white rounded-2xl shadow-2xl p-6 lg:p-8 flex flex-col items-center text-center transform transition-transform ${evaluation.status === 'success' ? 'border-4 border-emerald-500' : 'border-4 border-red-500'}`}>
                       
                       {evaluation.status === 'success' ? (
@@ -557,14 +561,14 @@
                 </div>
               )}
 
-              {/* TOP BAR MOBILE */}
+              {/* TOP BAR MOBILE (FIXED) */}
               {gameMode !== 'menu' && (
-                <div className="flex items-center justify-between p-3 bg-slate-800 text-white lg:hidden z-30 shadow-md flex-shrink-0">
+                <div className="fixed top-0 left-0 right-0 h-14 flex items-center justify-between px-3 bg-slate-800 text-white lg:hidden z-50 shadow-md">
                    <button onClick={returnToMenu} className="flex items-center gap-2 font-bold text-sm bg-slate-700 px-3 py-1.5 rounded-lg border border-slate-600">
                        <i className="ph-bold ph-house text-lg"></i> Menú
                    </button>
-                   <button onClick={() => setShowManual(true)} className="flex items-center gap-2 bg-emerald-600 px-3 py-1.5 rounded-lg font-bold text-sm shadow border border-emerald-500">
-                       <i className="ph-bold ph-book-open text-lg"></i> Ver Manual
+                   <button onClick={() => setShowManual(!showManual)} className={`flex items-center gap-2 px-3 py-1.5 rounded-lg font-bold text-sm shadow border transition-colors ${showManual ? 'bg-red-600 border-red-500 hover:bg-red-500' : 'bg-emerald-600 border-emerald-500 hover:bg-emerald-500'}`}>
+                       <i className={`ph-bold ${showManual ? 'ph-x' : 'ph-book-open'} text-lg`}></i> {showManual ? 'Cerrar' : 'Manual'}
                    </button>
                 </div>
               )}
@@ -583,16 +587,12 @@
 
               {/* LEFT PANEL: MANUAL CHEAT SHEET (RESPONSIVE DRAWER) */}
               {showManual && (
-                  <div className="fixed inset-0 bg-black/60 z-40 lg:hidden backdrop-blur-sm transition-opacity" onClick={() => setShowManual(false)}></div>
+                  <div className="fixed inset-0 top-14 bg-black/60 z-30 lg:hidden backdrop-blur-sm transition-opacity" onClick={() => setShowManual(false)}></div>
               )}
               
-              <div className={`fixed inset-y-0 left-0 z-50 lg:relative lg:z-20 w-[85%] max-w-[340px] lg:w-80 lg:max-w-none bg-white border-r border-slate-300 flex flex-col shadow-2xl lg:shadow-xl transform transition-transform duration-300 ease-in-out ${showManual ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'} pt-0 lg:pt-12`}>
-                
-                <button onClick={() => setShowManual(false)} className="absolute top-4 right-4 bg-white/20 hover:bg-white/40 text-white rounded-full p-1 lg:hidden transition-colors">
-                    <i className="ph-bold ph-x text-xl"></i>
-                </button>
+              <div className={`fixed top-14 lg:top-0 bottom-0 left-0 z-40 lg:relative lg:z-20 w-[85%] max-w-[340px] lg:w-80 lg:max-w-none bg-white border-r border-slate-300 flex flex-col shadow-2xl lg:shadow-xl transform transition-transform duration-300 ease-in-out ${showManual ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
 
-                <div className={`p-5 border-b border-slate-200 text-white ${gameMode === 'guided' ? 'bg-emerald-700' : gameMode === 'free' ? 'bg-blue-800' : 'bg-purple-800'} pt-8 lg:pt-5`}>
+                <div className={`p-5 border-b border-slate-200 text-white ${gameMode === 'guided' ? 'bg-emerald-700' : gameMode === 'free' ? 'bg-blue-800' : 'bg-purple-800'} pt-6 lg:pt-12`}>
                   <div className="flex items-center gap-3">
                     <div className={`p-2 rounded-lg ${gameMode === 'guided' ? 'bg-emerald-600 text-emerald-100' : gameMode === 'free' ? 'bg-blue-700 text-blue-100' : 'bg-purple-700 text-purple-100'}`}>
                       <i className="ph-bold ph-book-open text-2xl"></i>
@@ -607,6 +607,15 @@
                 </div>
 
                 <div className="flex-1 overflow-y-auto p-4 lg:p-5 text-sm custom-scrollbar relative">
+                   {/* NEW DEPARTMENTS SECTION */}
+                   <h3 className="font-bold text-slate-700 mb-3 uppercase text-xs tracking-wider border-b pb-2">Departamentos (PLU)</h3>
+                   <ul className="space-y-2 mb-6 text-[11px] lg:text-xs text-slate-600">
+                      <li><strong className="text-slate-800 font-mono bg-slate-100 px-1 border rounded">DEP 1</strong>: Éticos / Fórmula Médica.</li>
+                      <li><strong className="text-slate-800 font-mono bg-slate-100 px-1 border rounded">DEP 2</strong>: OTC / Venta Libre.</li>
+                      <li><strong className="text-slate-800 font-mono bg-slate-100 px-1 border rounded">DEP 3</strong>: Insumos (jeringas, gasas).</li>
+                      <li><strong className="text-slate-800 font-mono bg-slate-100 px-1 border rounded">DEP 4</strong>: Cuidado Personal (cremas).</li>
+                   </ul>
+
                    <h3 className="font-bold text-slate-700 mb-3 uppercase text-xs tracking-wider border-b pb-2">Procesos Comunes</h3>
                    <div className="space-y-4 mb-6">
                       <div>
